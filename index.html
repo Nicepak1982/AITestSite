@@ -914,7 +914,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.5</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.6</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1442,6 +1442,7 @@
         };
 
         // ====== INITIALIZATION ======
+        let isInitializing = true;
         window.addEventListener('load', async () => {
             loadLocalData();
             await loadFromCloud();
@@ -1457,6 +1458,7 @@
             const searchBox = document.getElementById('definitions-search');
             if (searchBox) searchBox.value = '';
             renderDefinitions();
+            isInitializing = false;
         });
 
         // ====== CLOUD SYNC FUNCTIONS (UPDATED: using fetch instead of iframes) ======
@@ -1594,8 +1596,10 @@
                 }
             } catch (error) {
                 console.error('Config sync error:', error);
-                showSyncStatus('error', '✗ Config sync failed - saved locally');
-                setTimeout(() => { showSyncStatus('', ''); }, 5000);
+                if (!isInitializing) {
+                    showSyncStatus('error', '✗ Config sync failed - saved locally');
+                    setTimeout(() => { showSyncStatus('', ''); }, 5000);
+                }
                 return false;
             }
         }
