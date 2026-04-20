@@ -914,7 +914,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.8</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.9</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1500,7 +1500,7 @@
         }
 
         async function loadFromCloud() {
-            if (!isInitializing) showSyncStatus('syncing', '☁️ Loading from Google Sheets...');
+            showSyncStatus('syncing', '☁️ Loading from Google Sheets...');
             try {
                 const response = await fetch(GOOGLE_SCRIPT_URL + '?action=load');
                 const data = await response.json();
@@ -1539,7 +1539,7 @@
                         localStorage.setItem('definitions', JSON.stringify(definitions));
                         renderDefinitions();
                     }
-                    if (!isInitializing) showSyncStatus('success', '✓ Loaded from Google Sheets successfully');
+                    showSyncStatus('success', '✓ Loaded from Google Sheets successfully');
                     const activeTab = document.querySelector('.nav-tab.active').textContent;
                     if (activeTab.includes('History')) {
                         displayHistory(issues);
@@ -1550,10 +1550,8 @@
                 }
             } catch (error) {
                 console.error('Load error:', error);
-                if (!isInitializing) {
-                    showSyncStatus('error', '✗ Failed to load from cloud - using local data');
-                    setTimeout(() => { showSyncStatus('', ''); }, 5000);
-                }
+                showSyncStatus('error', '✗ Failed to load from cloud - using local data');
+                setTimeout(() => { showSyncStatus('', ''); }, 5000);
             }
         }
 
