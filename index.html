@@ -914,7 +914,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.11</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.12</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2893,28 +2893,88 @@ IMPORTANT:
 - Be direct and technical`;
 
                 let response;
-                if (selectedProvider === 'gemini') {
+                const primaryProvider = selectedProvider;
+                const fallbackProvider = (primaryProvider === 'gemini') ? 'claude' : (primaryProvider === 'claude' ? 'gemini' : null);
+
+                function isFallbackableError(err) {
+                    const msg = (err.message || String(err)).toLowerCase();
+                    return msg.includes('503') || msg.includes('502') || msg.includes('500') ||
+                           msg.includes('unavailable') || msg.includes('overloaded') ||
+                           msg.includes('timeout') || msg.includes('timed out') ||
+                           msg.includes('deadline') || msg.includes('capacity') ||
+                           msg.includes('too many requests') || msg.includes('429') ||
+                           msg.includes('rate limit') || msg.includes('quota') ||
+                           msg.includes('network') || msg.includes('failed to fetch') ||
+                           msg.includes('service') || msg.includes('try again');
+                }
+
+                async function tryGemini() {
                     try {
-                        response = await callGeminiAPI(prompt, geminiFileUris);
+                        return await callGeminiAPI(prompt, geminiFileUris);
                     } catch (err) {
                         if (isStaleGeminiFileError(err) && geminiFileUris.length > 0) {
-                            console.warn('Stale Gemini file URIs detected, auto-refreshing and retrying...', err.message);
+                            console.warn('Stale Gemini URIs, refreshing...', err.message);
                             geminiFileUris = await forceRefreshAllManuals(manualKey);
-                            response = await callGeminiAPI(prompt, geminiFileUris);
-                        } else {
-                            throw err;
+                            return await callGeminiAPI(prompt, geminiFileUris);
                         }
+                        throw err;
                     }
                 }
-                else if (selectedProvider === 'claude') response = await callClaudeAPI(prompt, claudePDFs.length > 0 ? claudePDFs : null);
-                else response = await callAzureOpenAI(prompt);
+
+                async function tryClaude() {
+                    // Try with PDFs first
+                    if (claudePDFs.length === 0 && manuals.length > 0) {
+                        try { claudePDFs = await getManualPDFsForClaude(manualKey); } catch(e) { claudePDFs = []; }
+                    }
+                    try {
+                        return await callClaudeAPI(prompt, claudePDFs.length > 0 ? claudePDFs : null);
+                    } catch (err) {
+                        // If PDFs caused failure, try without them
+                        if (claudePDFs.length > 0) {
+                            console.warn('Claude failed with PDFs, retrying without...', err.message);
+                            return await callClaudeAPI(prompt, null);
+                        }
+                        throw err;
+                    }
+                }
+
+                try {
+                    // Try primary provider
+                    if (primaryProvider === 'gemini') response = await tryGemini();
+                    else if (primaryProvider === 'claude') response = await tryClaude();
+                    else response = await callAzureOpenAI(prompt);
+                } catch (primaryErr) {
+                    console.warn(`Primary provider (${primaryProvider}) failed:`, primaryErr.message);
+
+                    // Only attempt fallback for transient/service errors, and if a fallback exists
+                    if (fallbackProvider && isFallbackableError(primaryErr)) {
+                        const fallbackName = getProviderDisplayName(fallbackProvider);
+                        const primaryName = getProviderDisplayName(primaryProvider);
+                        aiAssistanceDiv.innerHTML = `<div class="work-instruction"><div class="wi-header">🤖 AI ANALYZING YOUR ISSUE</div><div style="padding: 60px 20px; text-align: center; background: white;"><div class="loading-spinner"></div><p style="margin-top: 25px; color: #666;"><strong>⚠️ ${primaryName} is unavailable</strong><br><span style="font-size: 14px;">Automatically switching to ${fallbackName}...</span></p></div></div>`;
+                        try {
+                            if (fallbackProvider === 'claude') response = await tryClaude();
+                            else if (fallbackProvider === 'gemini') response = await tryGemini();
+                            // Tag the response so the display shows which provider was used
+                            displayAIAssistance(response, line, machine, description, manuals, historyCount, fallbackProvider);
+                            return;
+                        } catch (fallbackErr) {
+                            console.warn(`Fallback provider (${fallbackProvider}) also failed:`, fallbackErr.message);
+                            throw new Error(`Both ${primaryName} and ${fallbackName} are currently unavailable. Please try again later.`);
+                        }
+                    } else {
+                        throw primaryErr;
+                    }
+                }
                 displayAIAssistance(response, line, machine, description, manuals, historyCount);
             } catch (error) {
                 aiAssistanceDiv.innerHTML = `<div class="work-instruction"><div class="wi-header" style="background: linear-gradient(135deg, #00A3E0, #138496);">💡 AI Unavailable</div><div style="padding: 40px 30px; text-align: center; background: white;"><h3 style="color: #00A3E0;">AI Assistance Temporarily Unavailable</h3><p style="color: #666;">${error.message}</p><button onclick="switchTab('search')" class="btn btn-info" style="margin: 5px;">🔍 Search History</button><button onclick="syncAPIKeyAndRetryAskAI()" class="btn btn-success" style="margin: 5px;">☁️ Sync & Retry</button></div></div>`;
             }
         }
 
-        function displayAIAssistance(aiResponse, line, machine, issue, manuals = [], historyCount = 0) {
+        function displayAIAssistance(aiResponse, line, machine, issue, manuals = [], historyCount = 0, usedProvider = null) {
+            const providerLabel = usedProvider
+                ? `${getProviderDisplayName(usedProvider)} <span style="color:#e67e22; font-size:12px;">(auto-fallback from ${getProviderDisplayName(selectedProvider)})</span>`
+                : getProviderDisplayName(selectedProvider);
             const aiAssistanceDiv = document.getElementById('ai-assistance-display');
             function findManualUrl(name) { for (const key in manualMappings) { const ms = Array.isArray(manualMappings[key]) ? manualMappings[key] : [manualMappings[key]]; for (const m of ms) { if (m.name && m.name.toLowerCase().includes(name.toLowerCase())) return m.url; } } return null; }
             function createManualLink(url, page) { if (!url) return null; if (url.includes('drive.google.com')) { const base = url.split('#')[0]; return page ? `${base}#page=${page}` : base; } return url; }
@@ -2934,7 +2994,7 @@ IMPORTANT:
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Issue</span><span class="wi-metadata-value">${issue}</span></div>
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Historical Records Analyzed</span><span class="wi-metadata-value">${historyCount > 0 ? historyCount + ' records for ' + machine + ' across all lines' : 'No historical data available'}</span></div>
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Generated</span><span class="wi-metadata-value">${new Date().toLocaleString()}</span></div>
-                    <div class="wi-metadata-item"><span class="wi-metadata-label">AI Provider</span><span class="wi-metadata-value">${getProviderDisplayName(selectedProvider)}</span></div>
+                    <div class="wi-metadata-item"><span class="wi-metadata-label">AI Provider</span><span class="wi-metadata-value">${providerLabel}</span></div>
                 </div>
                 <div class="wi-section"><div class="ai-assistance-content">${formattedContent}</div></div>
                 ${manuals && manuals.length > 0 ? `<div class="wi-section" style="background: #f8f9fa; border-top: 2px solid #dee2e6;"><h4 style="color: #002D72; margin-bottom: 15px;">📚 Equipment Manuals Referenced</h4><div style="display: flex; flex-direction: column; gap: 10px;">${manuals.map(m => `<div style="background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #002D72;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-weight: 600;">${m.name}</span><a href="${m.url}" target="_blank" class="btn btn-info" style="padding: 6px 15px; font-size: 13px; text-decoration: none;">📖 Open</a></div></div>`).join('')}</div></div>` : ''}
