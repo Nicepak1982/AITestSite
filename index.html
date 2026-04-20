@@ -914,7 +914,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.6</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.7</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1566,7 +1566,7 @@
                         const cloudMappingCount = Object.keys(data.aiConfigs.manualMappings).length;
                         if (cloudMappingCount > 0) {
                             console.warn(`Cloud has ${cloudMappingCount} mappings. Refusing to overwrite.`);
-                            showSyncStatus('error', '⚠️ Sync blocked: Won\'t erase cloud data');
+                            if (!isInitializing) showSyncStatus('error', '⚠️ Sync blocked: Won\'t erase cloud data');
                             return false;
                         }
                     }
@@ -1574,7 +1574,7 @@
                     console.error('Could not check cloud data:', error);
                 }
             }
-            showSyncStatus('syncing', '☁️ Syncing AI configs to Google Sheets...');
+            if (!isInitializing) showSyncStatus('syncing', '☁️ Syncing AI configs to Google Sheets...');
             try {
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
@@ -1589,7 +1589,7 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    showSyncStatus('success', '✓ AI configs synced to Google Sheets');
+                    if (!isInitializing) showSyncStatus('success', '✓ AI configs synced to Google Sheets');
                     return true;
                 } else {
                     throw new Error(data.message || 'Sync failed');
@@ -1612,7 +1612,7 @@
                     const data = await response.json();
                     if (data.success && data.definitions && data.definitions.length > 0) {
                         console.warn(`Cloud has ${data.definitions.length} definitions. Refusing to overwrite.`);
-                        showSyncStatus('error', '⚠️ Sync blocked: Won\'t erase cloud definitions');
+                        if (!isInitializing) showSyncStatus('error', '⚠️ Sync blocked: Won\'t erase cloud definitions');
                         return false;
                     }
                 } catch (error) {
