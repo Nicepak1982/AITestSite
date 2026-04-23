@@ -914,7 +914,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.12</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.13</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1294,7 +1294,9 @@
 
         <div id="manual-modal" class="modal" onclick="handleManualModalClick(event)">
             <div class="modal-content" onclick="event.stopPropagation()">
-                <h3 style="margin-bottom: 20px; color: #2c3e50;">Add Equipment Manual Mapping</h3>
+                <h3 id="manual-modal-title" style="margin-bottom: 20px; color: #2c3e50;">Add Equipment Manual Mapping</h3>
+                <input type="hidden" id="manual-edit-key">
+                <input type="hidden" id="manual-edit-id">
                 <div class="form-group">
                     <label for="manual-line">Production Line *</label>
                     <select id="manual-line" class="form-control" onchange="updateManualMachineOptions()">
@@ -1311,13 +1313,18 @@
                     <input type="text" id="manual-name" class="form-control" placeholder="e.g., Unwind Operation Manual v3.2">
                 </div>
                 <div class="form-group">
-                    <label for="manual-url">Manual URL *</label>
+                    <label for="manual-url">AI Source URL (Markdown) *</label>
                     <input type="text" id="manual-url" class="form-control" placeholder="https://drive.google.com/file/d/... (Google Drive link)">
-                    <small style="color: #666; font-size: 12px;">📁 Paste your Google Drive link - PDF will be automatically fetched when needed</small>
+                    <small style="color: #666; font-size: 12px;">📁 The markdown/text version used by the AI — fetched automatically when needed</small>
+                </div>
+                <div class="form-group">
+                    <label for="manual-pdf-url">PDF URL for Operators (Optional)</label>
+                    <input type="text" id="manual-pdf-url" class="form-control" placeholder="https://drive.google.com/file/d/... (Full PDF link)">
+                    <small style="color: #666; font-size: 12px;">📄 When provided, operators will open this PDF instead of the markdown source</small>
                 </div>
                 <div style="margin-top: 20px; text-align: right;">
                     <button type="button" class="btn" onclick="closeManualModal()" style="background: #6c757d; color: white;">Cancel</button>
-                    <button type="button" class="btn btn-success" onclick="saveManualMapping()">Save Manual Mapping</button>
+                    <button type="button" id="manual-save-btn" class="btn btn-success" onclick="saveManualMapping()">Save Manual Mapping</button>
                 </div>
             </div>
         </div>
@@ -2171,8 +2178,8 @@
                         let statusBadge = hasPDF && !needsRefresh ? '<span style="background: #002D72; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">✅ PDF Cached</span>' : hasPDF && needsRefresh ? '<span style="background: #ffc107; color: #212529; padding: 4px 8px; border-radius: 4px; font-size: 12px;">⚠️ Needs Refresh</span>' : '<span style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">📄 Not Cached</span>';
                         html += `<div style="background: ${index % 2 === 0 ? '#f8f9fa' : '#ffffff'}; border: 1px solid #dee2e6; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
                             <div style="display: flex; justify-content: space-between; align-items: start;">
-                                <div style="flex: 1;"><p style="margin: 0 0 8px 0;"><strong>📘 ${manual.name}</strong> ${statusBadge}</p><p style="margin: 0 0 5px 0; font-size: 13px;"><strong>URL:</strong> <a href="${manual.url}" target="_blank" style="color: #002D72; word-break: break-all;">${manual.url}</a></p><p style="margin: 0; font-size: 12px; color: #666;"><strong>Last Updated:</strong> ${lastUpdatedText}</p></div>
-                                <div style="display: flex; gap: 5px; margin-left: 10px;"><button onclick="refreshSingleManual('${key}', '${manual.id}')" class="btn btn-info" style="padding: 6px 12px; font-size: 13px;">🔄</button><button onclick="removeManualMapping('${key}', '${manual.id}')" class="btn" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 13px;">🗑️</button></div>
+                                <div style="flex: 1;"><p style="margin: 0 0 8px 0;"><strong>📘 ${manual.name}</strong> ${statusBadge}</p><p style="margin: 0 0 5px 0; font-size: 13px;"><strong>AI URL:</strong> <a href="${manual.url}" target="_blank" style="color: #002D72; word-break: break-all;">${manual.url}</a></p>${manual.pdfUrl ? `<p style="margin: 0 0 5px 0; font-size: 13px;"><strong>PDF URL:</strong> <a href="${manual.pdfUrl}" target="_blank" style="color: #00A3E0; word-break: break-all;">${manual.pdfUrl}</a></p>` : '<p style="margin: 0 0 5px 0; font-size: 13px; color: #999;">No PDF URL set — operators will use AI URL</p>'}<p style="margin: 0; font-size: 12px; color: #666;"><strong>Last Updated:</strong> ${lastUpdatedText}</p></div>
+                                <div style="display: flex; gap: 5px; margin-left: 10px;"><button onclick="editManualMapping('${key}', '${manual.id}')" class="btn btn-warning" style="padding: 6px 12px; font-size: 13px;">✏️</button><button onclick="refreshSingleManual('${key}', '${manual.id}')" class="btn btn-info" style="padding: 6px 12px; font-size: 13px;">🔄</button><button onclick="removeManualMapping('${key}', '${manual.id}')" class="btn" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 13px;">🗑️</button></div>
                             </div></div>`;
                     });
                     html += '</div>';
@@ -2201,7 +2208,8 @@
                 equipmentList.forEach(({ machine, manuals }) => {
                     html += `<div class="library-machine-section"><div class="library-machine-name"><span>🔧 ${machine}</span><span style="font-size: 13px; color: #6c757d; font-weight: normal;">(${manuals.length} manual${manuals.length !== 1 ? 's' : ''})</span></div>`;
                     manuals.forEach(manual => {
-                        html += `<div class="library-manual-card"><div class="library-manual-info"><div class="library-manual-name">📖 ${manual.name}</div><div class="library-manual-meta">Click "Open Manual" to view</div></div><a href="${manual.url}" target="_blank" class="btn btn-primary" style="text-decoration: none; white-space: nowrap;">📖 Open Manual</a></div>`;
+                        const openUrl = manual.pdfUrl || manual.url;
+                        html += `<div class="library-manual-card"><div class="library-manual-info"><div class="library-manual-name">📖 ${manual.name}</div><div class="library-manual-meta">Click "Open Manual" to view${manual.pdfUrl ? ' (PDF)' : ''}</div></div><a href="${openUrl}" target="_blank" class="btn btn-primary" style="text-decoration: none; white-space: nowrap;">📖 Open Manual</a></div>`;
                     });
                     html += '</div>';
                 });
@@ -2220,6 +2228,40 @@
             else { document.getElementById('manual-machine').value = ''; }
             document.getElementById('manual-name').value = '';
             document.getElementById('manual-url').value = '';
+            document.getElementById('manual-pdf-url').value = '';
+            document.getElementById('manual-edit-key').value = '';
+            document.getElementById('manual-edit-id').value = '';
+            document.getElementById('manual-modal-title').textContent = 'Add Equipment Manual Mapping';
+            document.getElementById('manual-save-btn').textContent = 'Save Manual Mapping';
+            document.getElementById('manual-line').disabled = false;
+            document.getElementById('manual-machine').disabled = false;
+            document.getElementById('manual-modal').style.display = 'block';
+        }
+
+        function editManualMapping(key, manualId) {
+            const manuals = manualMappings[key];
+            if (!manuals) return;
+            const manual = manuals.find(m => m.id === manualId);
+            if (!manual) return;
+            const [line, machine] = key.split('-', 2);
+            const lineSelect = document.getElementById('manual-line');
+            lineSelect.innerHTML = '<option value="">Select Production Line</option>';
+            const allLines = new Set(Object.keys(machinesByLine));
+            issues.forEach(issue => allLines.add(issue.line));
+            Array.from(allLines).sort().forEach(l => { const o = document.createElement('option'); o.value = l; o.textContent = l; lineSelect.appendChild(o); });
+            lineSelect.value = line;
+            lineSelect.disabled = true;
+            updateManualMachineOptions();
+            const machineInput = document.getElementById('manual-machine');
+            machineInput.value = machine;
+            machineInput.disabled = true;
+            document.getElementById('manual-name').value = manual.name || '';
+            document.getElementById('manual-url').value = manual.url || '';
+            document.getElementById('manual-pdf-url').value = manual.pdfUrl || '';
+            document.getElementById('manual-edit-key').value = key;
+            document.getElementById('manual-edit-id').value = manualId;
+            document.getElementById('manual-modal-title').textContent = 'Edit Equipment Manual';
+            document.getElementById('manual-save-btn').textContent = 'Update Manual';
             document.getElementById('manual-modal').style.display = 'block';
         }
 
@@ -2234,7 +2276,7 @@
             Array.from(machines).sort().forEach(machine => { const o = document.createElement('option'); o.value = machine; machineList.appendChild(o); });
         }
 
-        function closeManualModal() { document.getElementById('manual-modal').style.display = 'none'; }
+        function closeManualModal() { document.getElementById('manual-modal').style.display = 'none'; document.getElementById('manual-line').disabled = false; document.getElementById('manual-machine').disabled = false; }
         function handleManualModalClick(event) { if (event.target.id === 'manual-modal') closeManualModal(); }
 
         async function saveManualMapping() {
@@ -2242,14 +2284,29 @@
             const machine = document.getElementById('manual-machine').value.trim();
             const manualName = document.getElementById('manual-name').value.trim();
             const url = document.getElementById('manual-url').value.trim();
+            const pdfUrl = document.getElementById('manual-pdf-url').value.trim();
+            const editKey = document.getElementById('manual-edit-key').value;
+            const editId = document.getElementById('manual-edit-id').value;
             if (!line) { alert('Please select a production line'); return; }
             if (!machine) { alert('Please enter equipment name'); return; }
             if (!manualName) { alert('Please enter manual name'); return; }
             if (!url) { alert('Please enter manual URL'); return; }
             const key = `${line}-${machine}`;
-            if (!manualMappings[key]) manualMappings[key] = [];
-            if (manualMappings[key].find(m => m.url === url)) { alert('This manual URL already exists.'); return; }
-            manualMappings[key].push({ id: Date.now().toString(), name: manualName, url: url });
+            if (editKey && editId) {
+                // Edit existing
+                const manuals = manualMappings[editKey];
+                if (!manuals) { alert('Manual not found'); return; }
+                const manual = manuals.find(m => m.id === editId);
+                if (!manual) { alert('Manual not found'); return; }
+                manual.name = manualName;
+                manual.url = url;
+                manual.pdfUrl = pdfUrl || null;
+            } else {
+                // Add new
+                if (!manualMappings[key]) manualMappings[key] = [];
+                if (manualMappings[key].find(m => m.url === url)) { alert('This manual URL already exists.'); return; }
+                manualMappings[key].push({ id: Date.now().toString(), name: manualName, url: url, pdfUrl: pdfUrl || null });
+            }
             localStorage.setItem('manualMappings', JSON.stringify(manualMappings));
             closeManualModal();
             renderManualMappings();
@@ -2997,7 +3054,7 @@ IMPORTANT:
                     <div class="wi-metadata-item"><span class="wi-metadata-label">AI Provider</span><span class="wi-metadata-value">${providerLabel}</span></div>
                 </div>
                 <div class="wi-section"><div class="ai-assistance-content">${formattedContent}</div></div>
-                ${manuals && manuals.length > 0 ? `<div class="wi-section" style="background: #f8f9fa; border-top: 2px solid #dee2e6;"><h4 style="color: #002D72; margin-bottom: 15px;">📚 Equipment Manuals Referenced</h4><div style="display: flex; flex-direction: column; gap: 10px;">${manuals.map(m => `<div style="background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #002D72;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-weight: 600;">${m.name}</span><a href="${m.url}" target="_blank" class="btn btn-info" style="padding: 6px 15px; font-size: 13px; text-decoration: none;">📖 Open</a></div></div>`).join('')}</div></div>` : ''}
+                ${manuals && manuals.length > 0 ? `<div class="wi-section" style="background: #f8f9fa; border-top: 2px solid #dee2e6;"><h4 style="color: #002D72; margin-bottom: 15px;">📚 Equipment Manuals Referenced</h4><div style="display: flex; flex-direction: column; gap: 10px;">${manuals.map(m => `<div style="background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #002D72;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-weight: 600;">${m.name}</span><a href="${m.pdfUrl || m.url}" target="_blank" class="btn btn-info" style="padding: 6px 15px; font-size: 13px; text-decoration: none;">📖 Open</a></div></div>`).join('')}</div></div>` : ''}
                 <div class="wi-actions"><button onclick="window.print()" class="btn btn-primary">🖨️ Print</button><button onclick="downloadAIAssistance()" class="btn btn-info">💾 Download</button><button onclick="document.getElementById('ai-assistance-display').innerHTML=''" class="btn btn-warning">✖️ Close</button></div>
             </div>`;
             aiAssistanceDiv.innerHTML = html;
