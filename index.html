@@ -955,7 +955,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.20</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.22</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2990,25 +2990,26 @@ If no historical data is provided in this prompt, you MUST NOT invent, estimate,
 - If there is no historical data, do not include any "(Historically: ...)" notes in your recommendations.
 - It is far better to say "no historical data available for this equipment" than to fabricate numbers that could mislead a technician into a false sense of confidence.
 
-RESPONSE FORMAT (in this exact order):
+RESPONSE FORMAT (use these exact section headers, in this order, with NO numbers before the headers):
 
-1. SAFETY PRECAUTIONS
+SAFETY PRECAUTIONS
 All company policies and LOTO (Lockout/Tagout) procedures must be followed at all times.
 List any specific hazards or precautions for this issue and the recommended actions.
 
-2. RECOMMENDED NEXT STEPS (2-4 specific actions)
+RECOMMENDED NEXT STEPS
+Provide 2-4 specific actions, numbered 1. 2. 3. etc.
 Prioritize by likelihood of success based on historical data and manual procedures.
-For each step, if historical data supports it, include a brief note like: "(Historically: tried X times, Y% success rate)" 
+For each step, if historical data supports it, include a brief note like: "(Historically: tried X times, Y% success rate)"
 If the operator has already tried a historically successful action, note that and suggest alternatives.
 
-3. ACTIONS TO AVOID
+ACTIONS TO AVOID
 Briefly list any actions from the historical data that were consistently marked "NOT CORRECTED" for similar issues. Keep this to one line per action, e.g.: "Action name (tried X times, never corrected the issue)"
-If no failed actions found in history, skip this section.
+If no failed actions found in history, skip this section entirely.
 
-4. LIKELY ROOT CAUSE
+LIKELY ROOT CAUSE
 Based on the combination of current symptoms, actions taken, historical patterns, and manual references - what is most likely causing this?
 
-${hasManuals ? '5. MANUAL REFERENCES\nCite relevant sections, diagrams, or pages.\n' : ''}
+${hasManuals ? 'MANUAL REFERENCES\nCite relevant sections, diagrams, or pages.\n' : ''}
 
 IMPORTANT:
 - Do NOT include sections explaining what you found in the historical data
@@ -3019,9 +3020,9 @@ IMPORTANT:
 - Be direct and technical
 
 FORMATTING RULES (strictly follow):
-- ALL numbered items MUST use the format: "1. text", "2. text", "3. text" — never use "*1", "* 1", "•1", or any other variant
-- Never use bullet points (*) for numbered steps — use only clean numbers followed by a period and space
-- Section headers must be plain text in ALL CAPS followed by a colon, on their own line`;
+- Section headers (SAFETY PRECAUTIONS, RECOMMENDED NEXT STEPS, etc.) must be plain ALL CAPS text on their own line — do NOT put a number before section headers
+- Numbered steps within a section use: "1. text", "2. text" etc. — never use "*1", "* 1", or bullet variants
+- Never mix section header numbering with step numbering — sections are headers, steps are content`;
 
                 let response;
                 const primaryProvider = selectedProvider;
@@ -3115,7 +3116,32 @@ FORMATTING RULES (strictly follow):
             function createManualLink(url, page) { if (!url) return null; if (url.includes('drive.google.com')) { const base = url.split('#')[0]; return page ? `${base}#page=${page}` : base; } return url; }
             function makeCitationClickable(text) { const match = text.match(/\[(Source:\s*)?([^,]+),?\s*Page\s*(\d+)\]/i); if (match) { const n = match[2].trim(); const p = match[3]; const u = findManualUrl(n); if (u) return `<span class="citation"><a href="${createManualLink(u, p)}" target="_blank" class="citation-link">[${n}, Page ${p}]</a></span>`; } return `<span class="citation">${text}</span>`; }
             function cleanMarkdown(text) { text = text.replace(/^\*\*(.+?)\*\*$/gm, '$1').replace(/^\*\s+/gm, '').replace(/^[\*•-]\s*/gm, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\[(?:Source:\s*)?[^\]]+,?\s*Page\s*\d+\]/gi, match => makeCitationClickable(match)); return text.trim(); }
-            function formatLine(l) { l = l.trim(); if (!l) return ''; let m = l.match(/^(\d+)\.\s*(.+)$/); if (!m) m = l.match(/^\*\s*(\d+)[.\)]\s*(.+)$/); if (!m) m = l.match(/^\*(\d+)[.\)]?\s*(.+)$/); if (m) return `<div class="ai-step numbered"><span class="step-number">${m[1]}</span><span class="step-text">${cleanMarkdown(m[2])}</span></div>`; if (/safety/i.test(l) && l.length < 60) return ''; if (l.match(/^[A-Z][A-Z\s]+:$/)) return `<h4 class="ai-section-header">${l.replace(':', '')}</h4>`; return `<div class="ai-content-line">${cleanMarkdown(l)}</div>`; }
+            function formatLine(l) {
+                l = l.trim(); if (!l) return '';
+                // Strip leading number from section headers FIRST (e.g. "1. SAFETY PRECAUTIONS" or "2. RECOMMENDED NEXT STEPS")
+                const sectionHeaderMatch = l.match(/^(?:\d+\.\s*)?([A-Z][A-Z\s\/]+)$/);
+                if (sectionHeaderMatch) {
+                    const headerText = sectionHeaderMatch[1].trim();
+                    // Must be mostly uppercase and at least 4 chars — this is a section header, not a step
+                    if (headerText.length >= 4 && /safety/i.test(headerText)) return ''; // safety header suppressed (handled by banner)
+                    if (headerText.length >= 4) return `<h4 class="ai-section-header">${headerText}</h4>`;
+                }
+                // Numbered steps — only if text after number is NOT all-caps (i.e. it's actual content)
+                let m = l.match(/^(\d+)\.\s*(.+)$/);
+                if (!m) m = l.match(/^\*\s*(\d+)[.\)]\s*(.+)$/);
+                if (!m) m = l.match(/^\*(\d+)[.\)]?\s*(.+)$/);
+                if (m) {
+                    const num = m[1]; const text = m[2].trim();
+                    // If the text after the number is all-caps, treat as section header not a step
+                    if (/^[A-Z][A-Z\s\/]+$/.test(text)) {
+                        if (/safety/i.test(text)) return '';
+                        return `<h4 class="ai-section-header">${text}</h4>`;
+                    }
+                    return `<div class="ai-step numbered"><span class="step-number">${num}</span><span class="step-text">${cleanMarkdown(text)}</span></div>`;
+                }
+                if (l.match(/^[A-Z][A-Z\s]+:$/)) return `<h4 class="ai-section-header">${l.replace(':', '')}</h4>`;
+                return `<div class="ai-content-line">${cleanMarkdown(l)}</div>`;
+            }
 
             const lines = aiResponse.split('\n').filter(l => l.trim());
             let formattedContent = '';
