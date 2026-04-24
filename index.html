@@ -955,7 +955,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.22</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.24</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2865,7 +2865,6 @@ ${hasManuals ? '- Information from: ' + manualNames : '- Consult equipment manua
                         html += `<div class="wi-section"><div class="wi-content">`;
                         lines.slice(1).forEach(item => { const f = formatLine(item); if (f) html += f; });
                         html += `</div></div>`;
-                        html += `<div class="wi-safety-caution"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET</div></div>`;
                     } else {
                         html += `<div class="wi-section"><h4>${title}</h4><div class="wi-content">`;
                         lines.slice(1).forEach(item => { const f = formatLine(item); if (f) html += f; });
@@ -3145,23 +3144,15 @@ FORMATTING RULES (strictly follow):
 
             const lines = aiResponse.split('\n').filter(l => l.trim());
             let formattedContent = '';
-            let inSafetySection = false;
             lines.forEach((l, idx) => {
                 const trimmed = l.trim();
                 const isSafetyHeader = /^\d+\.\s*SAFETY/i.test(trimmed) || /^SAFETY/i.test(trimmed);
-                const isNextSectionHeader = idx > 0 && !isSafetyHeader && (/^\d+\.\s*[A-Z]/.test(trimmed) || /^[A-Z][A-Z\s]+:$/.test(trimmed));
-                if (isSafetyHeader && !inSafetySection) {
-                    inSafetySection = true;
+                if (isSafetyHeader) {
                     formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> SAFETY PRECAUTIONS — READ BEFORE PROCEEDING</div></div>`;
-                } else if (inSafetySection && isNextSectionHeader) {
-                    inSafetySection = false;
-                    formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET</div></div>`;
+                    return; // don't render the header line itself
                 }
                 const f = formatLine(l); if (f) formattedContent += f;
             });
-            if (inSafetySection) {
-                formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET</div></div>`;
-            }
 
             let html = `<div class="work-instruction"><div class="wi-header">🤖 AI RECOMMENDED COURSE OF ACTION</div>
                 <div class="wi-caution"><div class="wi-caution-icon">⚠️</div><div><strong>CAUTION: AI-Generated Recommendation</strong><br><span style="font-size: 13px;">Use caution when implementing AI recommendations. Verify steps are appropriate for your situation and contact your supervisor with any concerns.</span></div></div>
