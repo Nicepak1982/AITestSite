@@ -955,7 +955,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.17</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.19</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2074,13 +2074,23 @@
         }
 
         // ====== GOOGLE GEMINI API ======
+        function getFileMimeType(url, fallback = 'application/pdf') {
+            if (!url) return fallback;
+            const lower = url.toLowerCase();
+            if (lower.includes('.md') || lower.includes('markdown')) return 'text/plain';
+            if (lower.includes('.txt')) return 'text/plain';
+            if (lower.includes('.pdf')) return 'application/pdf';
+            // Google Drive URLs — check stored mimeType hint or default to pdf
+            return fallback;
+        }
+
         async function callGeminiAPI(prompt, fileUris = null) {
             const apiKey = geminiConfig.apiKey;
             const model = geminiConfig.model || 'gemini-2.5-flash';
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             const parts = [];
             if (fileUris) {
-                if (Array.isArray(fileUris)) { fileUris.forEach(fileData => { parts.push({ fileData: { mimeType: 'application/pdf', fileUri: fileData.uri } }); }); }
+                if (Array.isArray(fileUris)) { fileUris.forEach(fileData => { const mime = fileData.mimeType || getFileMimeType(fileData.sourceUrl, 'application/pdf'); parts.push({ fileData: { mimeType: mime, fileUri: fileData.uri } }); }); }
                 else { parts.push({ fileData: { mimeType: 'application/pdf', fileUri: fileUris } }); }
             }
             parts.push({ text: prompt });
@@ -2385,23 +2395,25 @@
             const response = await fetch(scriptUrl);
             if (!response.ok) throw new Error(`Failed: ${response.status}`);
             const data = await response.json();
-            if (!data.success) throw new Error(data.message || 'Failed to download PDF');
+            if (!data.success) throw new Error(data.message || 'Failed to download file');
+            const detectedMime = data.mimeType || getFileMimeType(url, 'application/pdf');
             const binaryString = atob(data.data);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-            return new Blob([bytes], { type: data.mimeType || 'application/pdf' });
+            return new Blob([bytes], { type: detectedMime });
         }
 
         async function uploadPDFToGemini(pdfBlob, fileName) {
             if (!geminiConfig.apiKey) throw new Error('Gemini API key not configured');
+            const mimeType = pdfBlob.type || 'application/pdf';
             const initResponse = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${geminiConfig.apiKey}`, {
-                method: 'POST', headers: { 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start', 'X-Goog-Upload-Header-Content-Type': 'application/pdf', 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start', 'X-Goog-Upload-Header-Content-Type': mimeType, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ file: { display_name: fileName } })
             });
             if (!initResponse.ok) throw new Error(`Upload start failed: ${initResponse.status}`);
             const uploadUrl = initResponse.headers.get('X-Goog-Upload-URL');
             if (!uploadUrl) throw new Error('No upload URL received');
-            const uploadResponse = await fetch(uploadUrl, { method: 'POST', headers: { 'X-Goog-Upload-Command': 'upload, finalize', 'X-Goog-Upload-Offset': '0', 'Content-Type': 'application/pdf' }, body: pdfBlob });
+            const uploadResponse = await fetch(uploadUrl, { method: 'POST', headers: { 'X-Goog-Upload-Command': 'upload, finalize', 'X-Goog-Upload-Offset': '0', 'Content-Type': mimeType }, body: pdfBlob });
             if (!uploadResponse.ok) throw new Error(`Upload failed: ${uploadResponse.status}`);
             const fileData = await uploadResponse.json();
             let file = fileData.file;
@@ -2410,7 +2422,7 @@
                 const statusResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/${file.name}?key=${geminiConfig.apiKey}`);
                 if (statusResponse.ok) file = await statusResponse.json(); else break;
             }
-            if (file.state !== 'ACTIVE') throw new Error('PDF processing failed');
+            if (file.state !== 'ACTIVE') throw new Error('File processing failed');
             return file.uri;
         }
 
@@ -2427,6 +2439,7 @@
                 if (showProgress) showSyncStatus('syncing', `☁️ Uploading "${manual.name}" to Gemini...`);
                 const geminiFileUri = await uploadPDFToGemini(pdfBlob, manual.name);
                 manual.geminiFileUri = geminiFileUri;
+                manual.geminiMimeType = pdfBlob.type || 'application/pdf';
                 manual.lastUpdated = new Date().toISOString();
                 localStorage.setItem('manualMappings', JSON.stringify(manualMappings));
                 await syncAIConfigsToCloud();
@@ -2444,8 +2457,8 @@
             const fileUris = [];
             for (const manual of manuals) {
                 try {
-                    if (manual.geminiFileUri && !needsCacheRefresh(manual.lastUpdated)) { fileUris.push({ uri: manual.geminiFileUri, name: manual.name }); }
-                    else { const uri = await refreshManualCache(key, manual.id, showProgress); fileUris.push({ uri: uri, name: manual.name }); }
+                    if (manual.geminiFileUri && !needsCacheRefresh(manual.lastUpdated)) { fileUris.push({ uri: manual.geminiFileUri, name: manual.name, mimeType: manual.geminiMimeType || getFileMimeType(manual.url, 'application/pdf'), sourceUrl: manual.url }); }
+                    else { const uri = await refreshManualCache(key, manual.id, showProgress); fileUris.push({ uri: uri, name: manual.name, mimeType: manual.geminiMimeType || getFileMimeType(manual.url, 'application/pdf'), sourceUrl: manual.url }); }
                 } catch (error) { console.error(`Error loading "${manual.name}":`, error); }
             }
             return fileUris;
@@ -3017,7 +3030,11 @@ FORMATTING RULES (strictly follow):
                            msg.includes('too many requests') || msg.includes('429') ||
                            msg.includes('rate limit') || msg.includes('quota') ||
                            msg.includes('network') || msg.includes('failed to fetch') ||
-                           msg.includes('service') || msg.includes('try again');
+                           msg.includes('service') || msg.includes('try again') ||
+                           msg.includes('no pages') || msg.includes('document') ||
+                           msg.includes('file') || msg.includes('upload') ||
+                           msg.includes('processing failed') || msg.includes('invalid') ||
+                           msg.includes('permission') || msg.includes('not found');
                 }
 
                 async function tryGemini() {
