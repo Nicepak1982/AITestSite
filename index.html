@@ -239,7 +239,7 @@
                 #000000 12px
             );
             color: black;
-            padding: 6px 6px;
+            padding: 3px 3px;
             margin: 0;
             display: flex;
             align-items: center;
@@ -247,14 +247,14 @@
 
         .wi-safety-caution-inner {
             background: #f9c700;
-            padding: 10px 18px;
+            padding: 5px 14px;
             border-radius: 3px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             width: 100%;
             font-weight: 700;
-            font-size: 15px;
+            font-size: 13px;
             letter-spacing: 0.5px;
         }
 
@@ -262,12 +262,12 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            width: 24px;
+            height: 24px;
             background: #000;
             border: 2px solid #000;
-            border-radius: 4px;
-            font-size: 18px;
+            border-radius: 3px;
+            font-size: 14px;
             flex-shrink: 0;
         }
 
@@ -955,7 +955,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.16</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.17</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -3121,6 +3121,7 @@ FORMATTING RULES (strictly follow):
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Equipment</span><span class="wi-metadata-value">${machine}</span></div>
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Issue</span><span class="wi-metadata-value">${issue}</span></div>
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Historical Records Analyzed</span><span class="wi-metadata-value">${historyCount > 0 ? historyCount + ' records for ' + machine + ' across all lines' : 'No historical data available'}</span></div>
+                    <div class="wi-metadata-item"><span class="wi-metadata-label">Manuals Analyzed</span><span class="wi-metadata-value">${manuals && manuals.length > 0 ? manuals.length + ' manual' + (manuals.length !== 1 ? 's' : '') + ': ' + manuals.map(m => m.name).join(', ') : 'No manuals available'}</span></div>
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Generated</span><span class="wi-metadata-value">${new Date().toLocaleString()}</span></div>
                     <div class="wi-metadata-item"><span class="wi-metadata-label">AI Provider</span><span class="wi-metadata-value">${providerLabel}</span></div>
                 </div>
