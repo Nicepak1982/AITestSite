@@ -239,7 +239,7 @@
                 #000000 12px
             );
             color: black;
-            padding: 10px 25px;
+            padding: 6px 6px;
             margin: 0;
             display: flex;
             align-items: center;
@@ -248,14 +248,27 @@
         .wi-safety-caution-inner {
             background: #f9c700;
             padding: 10px 18px;
-            border-radius: 4px;
+            border-radius: 3px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             width: 100%;
             font-weight: 700;
             font-size: 15px;
             letter-spacing: 0.5px;
+        }
+
+        .wi-safety-caution-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: #000;
+            border: 2px solid #000;
+            border-radius: 4px;
+            font-size: 18px;
+            flex-shrink: 0;
         }
 
         .wi-metadata {
@@ -942,7 +955,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.15</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.16</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2826,7 +2839,7 @@ ${hasManuals ? '- Information from: ' + manualNames : '- Consult equipment manua
 
             const sections = content.split(/\n(?=[A-Z][A-Z\s]+:)/);
             let html = `<div class="work-instruction"><div class="wi-header">🤖 AI-GENERATED WORK INSTRUCTION</div>
-                <div class="wi-caution"><div class="wi-caution-icon">⚠️</div><div><strong>CAUTION: AI-Generated</strong><br><span style="font-size: 13px;">Contact supervisor to review before implementing.</span></div></div>
+                <div class="wi-caution"><div class="wi-caution-icon">⚠️</div><div><strong>CAUTION: AI-Generated</strong><br><span style="font-size: 13px;">Use caution when implementing AI recommendations. Verify steps are appropriate for your situation and contact your supervisor with any concerns.</span></div></div>
                 <div class="wi-metadata"><div class="wi-metadata-item"><span class="wi-metadata-label">Line</span><span class="wi-metadata-value">${line}</span></div><div class="wi-metadata-item"><span class="wi-metadata-label">Equipment</span><span class="wi-metadata-value">${machine}</span></div><div class="wi-metadata-item"><span class="wi-metadata-label">Task</span><span class="wi-metadata-value">${issue}</span></div><div class="wi-metadata-item"><span class="wi-metadata-label">Generated</span><span class="wi-metadata-value">${new Date().toLocaleString()}</span></div><div class="wi-metadata-item"><span class="wi-metadata-label">AI Provider</span><span class="wi-metadata-value">${getProviderDisplayName(selectedProvider)}</span></div></div>`;
             sections.forEach(section => {
                 if (section.trim()) {
@@ -2835,11 +2848,11 @@ ${hasManuals ? '- Information from: ' + manualNames : '- Consult equipment manua
                     const title = lines[0].replace(/^\*\*/g, '').replace(/\*\*$/g, '').replace(':', '').trim();
                     const isSafety = /safety/i.test(title);
                     if (isSafety) {
-                        html += `<div class="wi-safety-caution"><div class="wi-safety-caution-inner">⚠️&nbsp;&nbsp;SAFETY PRECAUTIONS — READ BEFORE PROCEEDING &nbsp;⚠️</div></div>`;
+                        html += `<div class="wi-safety-caution"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> SAFETY PRECAUTIONS — READ BEFORE PROCEEDING</div></div>`;
                         html += `<div class="wi-section"><div class="wi-content">`;
                         lines.slice(1).forEach(item => { const f = formatLine(item); if (f) html += f; });
                         html += `</div></div>`;
-                        html += `<div class="wi-safety-caution"><div class="wi-safety-caution-inner">⚠️&nbsp;&nbsp;END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET &nbsp;⚠️</div></div>`;
+                        html += `<div class="wi-safety-caution"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET</div></div>`;
                     } else {
                         html += `<div class="wi-section"><h4>${title}</h4><div class="wi-content">`;
                         lines.slice(1).forEach(item => { const f = formatLine(item); if (f) html += f; });
@@ -3090,19 +3103,19 @@ FORMATTING RULES (strictly follow):
                 const isNextSectionHeader = idx > 0 && !isSafetyHeader && (/^\d+\.\s*[A-Z]/.test(trimmed) || /^[A-Z][A-Z\s]+:$/.test(trimmed));
                 if (isSafetyHeader && !inSafetySection) {
                     inSafetySection = true;
-                    formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner">⚠️&nbsp;&nbsp;SAFETY PRECAUTIONS — READ BEFORE PROCEEDING &nbsp;⚠️</div></div>`;
+                    formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> SAFETY PRECAUTIONS — READ BEFORE PROCEEDING</div></div>`;
                 } else if (inSafetySection && isNextSectionHeader) {
                     inSafetySection = false;
-                    formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner">⚠️&nbsp;&nbsp;END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET &nbsp;⚠️</div></div>`;
+                    formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET</div></div>`;
                 }
                 const f = formatLine(l); if (f) formattedContent += f;
             });
             if (inSafetySection) {
-                formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner">⚠️&nbsp;&nbsp;END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET &nbsp;⚠️</div></div>`;
+                formattedContent += `<div class="wi-safety-caution" style="margin:0 -25px;"><div class="wi-safety-caution-inner"><span class="wi-safety-caution-icon">⚠️</span> END OF SAFETY PRECAUTIONS — ENSURE ALL PRECAUTIONS ARE MET</div></div>`;
             }
 
             let html = `<div class="work-instruction"><div class="wi-header">🤖 AI RECOMMENDED COURSE OF ACTION</div>
-                <div class="wi-caution"><div class="wi-caution-icon">⚠️</div><div><strong>CAUTION: AI-Generated Recommendation</strong><br><span style="font-size: 13px;">Contact supervisor before implementing.</span></div></div>
+                <div class="wi-caution"><div class="wi-caution-icon">⚠️</div><div><strong>CAUTION: AI-Generated Recommendation</strong><br><span style="font-size: 13px;">Use caution when implementing AI recommendations. Verify steps are appropriate for your situation and contact your supervisor with any concerns.</span></div></div>
                 <div class="wi-metadata">
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Production Line</span><span class="wi-metadata-value">${line}</span></div>
                     <div class="wi-metadata-item"><span class="wi-metadata-label">Equipment</span><span class="wi-metadata-value">${machine}</span></div>
