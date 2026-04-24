@@ -955,7 +955,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.19</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.20</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2983,6 +2983,12 @@ The historical issue log is real production data but it is IMPERFECT. Use good j
 - Correlation is not causation. Just because an action was done before a fix doesn't mean it caused the fix.
 - Use the historical data as ONE input alongside your technical knowledge, the equipment manuals, and engineering reasoning. Do not blindly trust success/failure rates - think critically about whether the recorded action logically addresses the reported symptom.
 - When historical data conflicts with what the manual says or what engineering logic suggests, weigh all three and use your best judgement. Flag any contradictions briefly if relevant.
+
+CRITICAL - NO FABRICATED STATISTICS:
+If no historical data is provided in this prompt, you MUST NOT invent, estimate, or imply any statistics, success rates, percentages, or counts (e.g. "tried 8 times", "75% success rate"). 
+- Only cite historical data that is explicitly present in the prompt above.
+- If there is no historical data, do not include any "(Historically: ...)" notes in your recommendations.
+- It is far better to say "no historical data available for this equipment" than to fabricate numbers that could mislead a technician into a false sense of confidence.
 
 RESPONSE FORMAT (in this exact order):
 
