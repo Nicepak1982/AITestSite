@@ -1068,7 +1068,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.23</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.24</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1640,11 +1640,15 @@
             return new Promise(async (resolve) => {
                 showSyncStatus('syncing', '☁️ Syncing to Google Sheets...');
                 try {
-                    const payload = { action: 'save', issue: issue };
+                    // Send issue without AI response first (proven working method)
+                    const issueForSync = Object.assign({}, issue);
+                    const aiResponseText = issueForSync.aiResponse || '';
+                    issueForSync.aiResponse = aiResponseText.substring(0, 4000);
+
                     const response = await fetch(GOOGLE_SCRIPT_URL, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'action=save&issue=' + encodeURIComponent(JSON.stringify(issueForSync))
                     });
                     const data = await response.json();
                     if (data.success) {
