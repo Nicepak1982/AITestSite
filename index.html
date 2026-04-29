@@ -1068,7 +1068,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.20</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.22</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1653,6 +1653,24 @@
                         throw new Error(data.message || 'Sync failed');
                     }
                 } catch (error) {
+                    // Retry with chunked approach - strip AI response if too large
+                    try {
+                        const fallbackIssue = Object.assign({}, issue);
+                        if (fallbackIssue.aiResponse && fallbackIssue.aiResponse.length > 40000) {
+                            fallbackIssue.aiResponse = fallbackIssue.aiResponse.substring(0, 40000) + '... [truncated]';
+                        }
+                        const response2 = await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: 'action=save&issue=' + encodeURIComponent(JSON.stringify(fallbackIssue))
+                        });
+                        const data2 = await response2.json();
+                        if (data2.success) {
+                            showSyncStatus('success', '✓ Synced to Google Sheets successfully');
+                            resolve(true);
+                            return;
+                        }
+                    } catch (e2) { /* fall through */ }
                     console.error('Sync error:', error);
                     showSyncStatus('error', '✗ Cloud sync failed - data saved locally');
                     setTimeout(() => { showSyncStatus('', ''); }, 5000);
@@ -3185,7 +3203,7 @@ IMPORTANT:
         }
 
         function displayAIAssistance(aiResponse, line, machine, issue, manuals = [], historyCount = 0, usedProvider = null) {
-            lastAIResponse = aiResponse; // store for saving with issue
+            lastAIResponse = aiResponse ? aiResponse.substring(0, 49000) : ''; // store for saving with issue
             const providerLabel = usedProvider
                 ? `${getProviderDisplayName(usedProvider)} <span style="color:#e67e22; font-size:12px;">(auto-fallback from ${getProviderDisplayName(selectedProvider)})</span>`
                 : getProviderDisplayName(selectedProvider);
