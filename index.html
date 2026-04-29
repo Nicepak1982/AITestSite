@@ -1068,7 +1068,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.18</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.20</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1586,6 +1586,7 @@
         // ====== DATA STORAGE ======
         let issues = [];
         let currentActions = [];
+        let lastAIResponse = '';
         let azureConfig = JSON.parse(localStorage.getItem('azureConfig')) || {};
         let geminiConfig = JSON.parse(localStorage.getItem('geminiConfig')) || {};
         let claudeConfig = JSON.parse(localStorage.getItem('claudeConfig')) || {};
@@ -1986,7 +1987,7 @@
             const action = document.getElementById('action-input').value.trim();
             if (!action) { alert('Please describe the action taken.'); return; }
             const statusMap = { 'corrected': 'Corrected', 'not-corrected': 'Not Corrected', 'unsure': 'Unsure' };
-            currentActions.push({ action: action, status: statusMap[status], timestamp: new Date().toISOString() });
+            currentActions.push({ action: action, status: statusMap[status], timestamp: new Date().toISOString(), aiResponse: lastAIResponse || '' });
             updateActionsDisplay();
             closeActionModal();
             setTimeout(() => {
@@ -2038,7 +2039,7 @@
             const description = document.getElementById('description').value;
             const newIssues = [];
             for (const act of currentActions) {
-                const issue = { id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9), timestamp: act.timestamp, operator: operator, line: line, machine: machine, description: description, solutions: act.action, effectiveness: act.status.toLowerCase().replace(' ', '-'), consent: _consentAnswer ? 'Yes' : 'No' };
+                const issue = { id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9), timestamp: act.timestamp, operator: operator, line: line, machine: machine, description: description, solutions: act.action, effectiveness: act.status.toLowerCase().replace(' ', '-'), consent: _consentAnswer ? 'Yes' : 'No', aiResponse: act.aiResponse || '' };
                 newIssues.push(issue);
                 issues.push(issue);
             }
@@ -2047,6 +2048,7 @@
             alert('Issue logged successfully with ' + currentActions.length + ' action(s)!');
             document.getElementById('issue-form').reset();
             currentActions = [];
+            lastAIResponse = '';
             updateActionsDisplay();
             document.getElementById('submit-issue-btn').style.display = 'none';
             document.getElementById('ask-ai-btn').style.display = 'none';
@@ -3183,6 +3185,7 @@ IMPORTANT:
         }
 
         function displayAIAssistance(aiResponse, line, machine, issue, manuals = [], historyCount = 0, usedProvider = null) {
+            lastAIResponse = aiResponse; // store for saving with issue
             const providerLabel = usedProvider
                 ? `${getProviderDisplayName(usedProvider)} <span style="color:#e67e22; font-size:12px;">(auto-fallback from ${getProviderDisplayName(selectedProvider)})</span>`
                 : getProviderDisplayName(selectedProvider);
