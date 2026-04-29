@@ -1068,7 +1068,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.16</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.17</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2038,7 +2038,7 @@
             const description = document.getElementById('description').value;
             const newIssues = [];
             for (const act of currentActions) {
-                const issue = { id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9), timestamp: act.timestamp, operator: operator, line: line, machine: machine, description: description, solutions: act.action, effectiveness: act.status.toLowerCase().replace(' ', '-') };
+                const issue = { id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9), timestamp: act.timestamp, operator: operator, line: line, machine: machine, description: description, solutions: act.action, effectiveness: act.status.toLowerCase().replace(' ', '-'), consent: _consentAnswer ? 'Yes' : 'No' };
                 newIssues.push(issue);
                 issues.push(issue);
             }
@@ -3264,34 +3264,12 @@ IMPORTANT:
             }
             errDiv.style.display = 'none';
 
-            // Auto-fill the Operator Name field
+            // Auto-fill the De-identifier field
             const operatorField = document.getElementById('operator');
             if (operatorField) operatorField.value = deid;
 
             // Hide the modal
             document.getElementById('consent-overlay').style.display = 'none';
-
-            // Save to Google Sheet (fire-and-forget)
-            saveConsentToSheet(deid, _consentAnswer);
-        }
-
-        async function saveConsentToSheet(deid, consented) {
-            try {
-                const body = new URLSearchParams({
-                    action: 'saveConsent',
-                    deid: deid,
-                    consented: consented ? 'Yes' : 'No',
-                    timestamp: new Date().toISOString()
-                });
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: body.toString()
-                });
-            } catch (e) {
-                console.warn('Could not save consent record:', e);
-            }
         }
         // ====== END CONSENT LOGIC ======
 
