@@ -1030,6 +1030,10 @@
             <div id="deid-step">
                 <div class="c-header">🔐 Create Your De-identifier</div>
                 <div class="c-body">
+                    <div id="no-consent-notice" style="display:none; background:#fff8e1; border-left:4px solid #ffa000; border-radius:6px; padding:12px 15px; margin-bottom:16px; font-size:14px; color:#444; line-height:1.7;">
+                        <strong>❓ Why am I being asked to de-identify even though I did not give consent?</strong><br>
+                        This is done to help protect the identity of those participating in the study. Even without consent, a de-identifier ensures that no personal information is tied to any data entered in this application.
+                    </div>
                     <p>To protect your identity, please create a personal de-identifier code using the formula below:</p>
                     <div class="deid-example">
                         <strong>Formula:</strong><br>
@@ -1064,7 +1068,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.15</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.16</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -3246,6 +3250,9 @@ IMPORTANT:
             _consentAnswer = agreed;
             document.getElementById('consent-step').style.display = 'none';
             document.getElementById('deid-step').style.display = 'block';
+            if (!agreed) {
+                document.getElementById('no-consent-notice').style.display = 'block';
+            }
         }
 
         function submitDeid() {
