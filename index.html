@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1086,7 +1085,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.25</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.26</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2060,6 +2059,10 @@
             const line = document.getElementById('line').value;
             const machine = document.getElementById('machine').value;
             const description = document.getElementById('description').value;
+            // Backfill AI response on any actions that were added before AI was consulted
+            if (lastAIResponse) {
+                currentActions.forEach(act => { if (!act.aiResponse) act.aiResponse = lastAIResponse; });
+            }
             const newIssues = [];
             for (const act of currentActions) {
                 const issue = { id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9), timestamp: act.timestamp, operator: operator, line: line, machine: machine, description: description, solutions: act.action, effectiveness: act.status.toLowerCase().replace(' ', '-'), consent: _consentAnswer ? 'Yes' : 'No', aiResponse: act.aiResponse || '' };
