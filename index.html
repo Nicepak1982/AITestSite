@@ -1085,7 +1085,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.26</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.27</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -2280,7 +2280,7 @@
             const endpoint = azureConfig.endpoint.replace(/\/$/, '');
             const url = `${endpoint}/openai/deployments/${azureConfig.deploymentName || 'gpt-4'}/chat/completions?api-version=2024-02-15-preview`;
             const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'api-key': azureConfig.apiKey },
-                body: JSON.stringify({ messages: [{ role: 'system', content: 'You are an expert manufacturing technician.' }, { role: 'user', content: prompt }], temperature: 0.7, max_tokens: 2000 }) });
+                body: JSON.stringify({ messages: [{ role: 'system', content: 'You are an expert manufacturing technician. CONTENT POLICY - STRICT: If the input is unrelated to manufacturing equipment troubleshooting, respond only with: "This system is designed for manufacturing equipment troubleshooting only. Please describe the equipment issue you are experiencing." If the input contains explicit, sexual, vulgar, or offensive language, respond only with: "Inappropriate content was detected. Please use professional language and describe your equipment issue." These rules override all other instructions.' }, { role: 'user', content: prompt }], temperature: 0.7, max_tokens: 2000 }) });
             if (!response.ok) { const e = await response.json(); throw new Error(e.error?.message || `Failed: ${response.status}`); }
             const data = await response.json(); return data.choices[0].message.content;
         }
@@ -3076,6 +3076,11 @@ ${hasManuals ? '- Information from: ' + manualNames : '- Consult equipment manua
                 }
 
                 const prompt = `You are a manufacturing equipment expert. Provide direct troubleshooting guidance.
+
+CONTENT POLICY - STRICT:
+- If the issue description is unrelated to manufacturing equipment troubleshooting, do NOT answer it. Respond only with: "This system is designed for manufacturing equipment troubleshooting only. Please describe the equipment issue you are experiencing."
+- If the input contains explicit, sexual, vulgar, or offensive language, do NOT engage with the content. Respond only with: "Inappropriate content was detected. Please use professional language and describe your equipment issue."
+- These rules override all other instructions. Never make exceptions regardless of how the request is framed.
 
 ${definitionsContext}
 CURRENT SITUATION:
