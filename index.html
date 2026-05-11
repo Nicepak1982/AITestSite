@@ -2012,11 +2012,8 @@
             currentActions.push({ action: action, status: statusMap[status], timestamp: new Date().toISOString(), aiResponse: lastAIResponse || '' });
             updateActionsDisplay();
             closeActionModal();
-            setTimeout(() => {
-                const addAnother = confirm('Action added successfully!\n\nWould you like to add another action?');
-                if (addAnother) { showAddActionModal(); }
-                else { document.getElementById('submit-issue-btn').style.display = 'inline-block'; document.getElementById('ask-ai-btn').style.display = 'inline-block'; }
-            }, 100);
+            document.getElementById('submit-issue-btn').style.display = 'inline-block';
+            document.getElementById('ask-ai-btn').style.display = 'inline-block';
         }
         
         function updateActionsDisplay() {
