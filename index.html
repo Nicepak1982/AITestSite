@@ -1085,7 +1085,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.29</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.30</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1691,7 +1691,6 @@
             renderDefinitions();
             loadChangelogSettings();
             isInitializing = false;
-            setTimeout(() => checkAndShowChangelog(), 800);
         });
 
         // ====== CLOUD SYNC FUNCTIONS (UPDATED: using fetch instead of iframes) ======
@@ -1773,6 +1772,8 @@
                         }
                         if (data.aiConfigs.changelogConfig) {
                             changelogConfig = data.aiConfigs.changelogConfig;
+                            loadChangelogSettings();
+                            checkAndShowChangelog();
                         }
                     }
                     if (data.definitions && Array.isArray(data.definitions)) {
