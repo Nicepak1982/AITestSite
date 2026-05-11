@@ -3374,10 +3374,15 @@ IMPORTANT:
 
         function checkAndShowChangelog() {
             const config = changelogConfig;
-            if (!config || !config.enabled || !config.text || !config.savedAt) return;
+            console.log('[Changelog] config:', JSON.stringify(config));
+            if (!config || !config.enabled) { console.log('[Changelog] BLOCKED: not enabled or no config'); return; }
+            if (!config.text) { console.log('[Changelog] BLOCKED: no text'); return; }
+            if (!config.savedAt) { console.log('[Changelog] BLOCKED: no savedAt'); return; }
             const expiryDate = new Date(config.savedAt);
             expiryDate.setDate(expiryDate.getDate() + (config.days || 7));
-            if (new Date() <= expiryDate) { showChangelogModal(config.text); }
+            console.log('[Changelog] today:', new Date().toISOString(), 'expiry:', expiryDate.toISOString());
+            if (new Date() <= expiryDate) { console.log('[Changelog] SHOWING modal'); showChangelogModal(config.text); }
+            else { console.log('[Changelog] BLOCKED: expired'); }
         }
 
         function showChangelogModal(text) {
