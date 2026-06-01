@@ -1085,7 +1085,7 @@
             
             <div class="version" onclick="showCreator()" style="position: absolute; right: 20px; top: 20px; margin: 0; cursor: pointer; transition: transform 0.2s;" 
                  onmouseover="this.style.transform='scale(1.1)'" 
-                 onmouseout="this.style.transform='scale(1)'">v21.30</div>
+                 onmouseout="this.style.transform='scale(1)'">v21.31</div>
         </div>
 
         <div id="sync-status" class="sync-status"></div>
@@ -1680,6 +1680,8 @@
             if (searchBox) searchBox.value = '';
             renderDefinitions();
             isInitializing = false;
+            // Show changelog after cloud data is loaded
+            showChangelogIfActive();
         });
 
         // ====== CLOUD SYNC FUNCTIONS (UPDATED: using fetch instead of iframes) ======
@@ -3350,8 +3352,6 @@ IMPORTANT:
                     updateSuggestions();
                     checkShowAIButton();
                 }
-                // Show changelog if active
-                showChangelogIfActive();
             } else {
                 // RX500 — show consent flow as normal
                 document.getElementById('consent-overlay').style.display = 'flex';
@@ -3395,8 +3395,6 @@ IMPORTANT:
 
             // Hide the modal
             document.getElementById('consent-overlay').style.display = 'none';
-            // Show changelog if active
-            showChangelogIfActive();
         }
         // ====== END CONSENT LOGIC ======
 
@@ -3450,13 +3448,21 @@ IMPORTANT:
             }
             changelogConfig = { message, startDate, endDate };
             resultDiv.innerHTML = '<p style="color:#666;">☁️ Saving to Google Sheets...</p>';
-            const success = await syncAIConfigsToCloud();
-            if (success) {
-                resultDiv.innerHTML = '<p style="color:#002D72;">✓ Changelog saved and synced to cloud.</p>';
-            } else {
-                resultDiv.innerHTML = '<p style="color:#dc3545;">✗ Cloud sync failed — check your connection.</p>';
+            // Fire sync and verify by re-loading from cloud rather than relying on sync return value
+            await syncAIConfigsToCloud();
+            try {
+                const verifyResp = await fetch(GOOGLE_SCRIPT_URL + '?action=load');
+                const verifyData = await verifyResp.json();
+                if (verifyData.success && verifyData.aiConfigs && verifyData.aiConfigs.changelogConfig &&
+                    verifyData.aiConfigs.changelogConfig.message === message) {
+                    resultDiv.innerHTML = '<p style="color:#002D72;">✓ Changelog saved and verified in cloud.</p>';
+                } else {
+                    resultDiv.innerHTML = '<p style="color:#dc3545;">✗ Cloud sync failed — check your connection.</p>';
+                }
+            } catch(e) {
+                resultDiv.innerHTML = '<p style="color:#dc3545;">✗ Could not verify save — check your connection.</p>';
             }
-            setTimeout(() => { resultDiv.innerHTML = ''; }, 4000);
+            setTimeout(() => { resultDiv.innerHTML = ''; }, 5000);
         }
 
         async function clearChangelogConfig() {
